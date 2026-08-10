@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Antigravity Network Port Scanner</title>
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar Controls -->
+        <aside class="sidebar">
+            <div class="brand">
+                <div class="logo-icon">
+                    <i data-lucide="shield-alert" class="neon-glow-icon"></i>
+                </div>
+                <div class="brand-text">
+                    <h1>PortScanner</h1>
+                    <span class="badge">Go Concurrent v1.0</span>
+                </div>
+            </div>
+
+            <form id="scanner-form" class="scanner-form">
+                <!-- Target Input -->
+                <div class="form-group">
+                    <label for="target-input">
+                        <i data-lucide="globe"></i> Target IP / Host
+                    </label>
+                    <input type="text" id="target-input" placeholder="e.g. 192.168.1.1, 10.0.0.0/24" required>
+                    <small class="helper-text">Supports single IP/host, IP range (e.g. 192.168.1.1-50), or CIDR subnets.</small>
+                </div>
+
+                <!-- Ports Input -->
+                <div class="form-group">
+                    <label for="ports-input">
+                        <i data-lucide="plug"></i> Target Ports
+                    </label>
+                    <div class="input-with-presets">
+                        <input type="text" id="ports-input" placeholder="e.g. 22,80,443,1-1000" required>
+                    </div>
+                    <div class="presets-row">
+                        <button type="button" class="preset-btn" data-preset="common">Top 20</button>
+                        <button type="button" class="preset-btn" data-preset="web">Web</button>
+                        <button type="button" class="preset-btn" data-preset="db">Database</button>
+                        <button type="button" class="preset-btn" data-preset="standard">Top 1000</button>
+                    </div>
+                    <small class="helper-text">Comma-separated individual ports or ranges (e.g. 1-1000).</small>
+                </div>
+
+                <!-- Concurrency workers slider -->
+                <div class="form-group">
+                    <div class="slider-header">
+                        <label for="workers-input">
+                            <i data-lucide="cpu"></i> Concurrency Workers
+                        </label>
+                        <span id="workers-val" class="slider-value">150</span>
+                    </div>
+                    <input type="range" id="workers-input" min="10" max="1000" step="10" value="150">
+                    <small class="helper-text">Number of parallel Go Goroutines. Higher is faster but load is heavier.</small>
+                </div>
+
+                <!-- Timeout slider -->
+                <div class="form-group">
+                    <div class="slider-header">
+                        <label for="timeout-input">
+                            <i data-lucide="clock"></i> Connection Timeout
+                        </label>
+                        <span id="timeout-val" class="slider-value">800 ms</span>
+                    </div>
+                    <input type="range" id="timeout-input" min="100" max="5000" step="100" value="800">
+                    <small class="helper-text">Timeout wait time for slow networks or filtered responses.</small>
+                </div>
+
+                <!-- Control Buttons -->
+                <div class="form-actions">
+                    <button type="submit" id="start-btn" class="btn btn-primary btn-block">
+                        <i data-lucide="play"></i> Start Scan
+                    </button>
+                    <button type="button" id="stop-btn" class="btn btn-danger btn-block hidden">
+                        <i data-lucide="square"></i> Stop Scan
+                    </button>
+                </div>
+            </form>
+
+            <!-- Local Interfaces Panel -->
+            <div class="local-network-panel">
+                <h3><i data-lucide="network"></i> Local Interfaces</h3>
+                <div id="interfaces-list" class="interfaces-list">
+                    <div class="loading-mini">Querying interfaces...</div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <!-- Stats Dashboard Grid -->
+            <section class="stats-dashboard">
+                <!-- Stat Card: Progress -->
+                <div class="stat-card progress-card">
+                    <div class="stat-header">
+                        <span class="stat-title">Overall Progress</span>
+                        <div class="stat-icon-wrapper progress-icon">
+                            <i data-lucide="trending-up"></i>
+                        </div>
+                    </div>
+                    <div class="stat-content">
+                        <div class="progress-details">
+                            <span class="stat-number" id="stat-progress">0%</span>
+                            <span class="stat-subtext" id="stat-scanned-fraction">0 / 0 ports</span>
+                        </div>
+                        <div class="progress-bar-container">
+                            <div class="progress-bar" id="progress-bar-fill" style="width: 0%"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Stat Card: Open Ports -->
+                <div class="stat-card open-card">
+                    <div class="stat-header">
+                        <span class="stat-title">Open Ports Found</span>
+                        <div class="stat-icon-wrapper open-icon">
+                            <i data-lucide="unlock"></i>
+                        </div>
+                    </div>
+                    <div class="stat-content">
+                        <span class="stat-number" id="stat-open-ports">0</span>
+                        <span class="stat-subtext" id="stat-status-text">Idle</span>
+                    </div>
+                </div>
+
+                <!-- Stat Card: Speed -->
+                <div class="stat-card speed-card">
+                    <div class="stat-header">
+                        <span class="stat-title">Scan Speed</span>
+                        <div class="stat-icon-wrapper speed-icon">
+                            <i data-lucide="zap"></i>
+                        </div>
+                    </div>
+                    <div class="stat-content">
+                        <span class="stat-number" id="stat-speed">0.0<span class="unit">p/s</span></span>
+                        <span class="stat-subtext" id="stat-elapsed">Elapsed: 0s</span>
+                    </div>
+                </div>
+
+                <!-- Stat Card: ETA -->
+                <div class="stat-card eta-card">
+                    <div class="stat-header">
+                        <span class="stat-title">Time Remaining</span>
+                        <div class="stat-icon-wrapper eta-icon">
+                            <i data-lucide="hourglass"></i>
+                        </div>
+                    </div>
+                    <div class="stat-content">
+                        <span class="stat-number" id="stat-eta">N/A</span>
+                        <span class="stat-subtext" id="stat-rate-text">ETA calculated live</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Visual Scanner Grid Grid -->
+            <section class="panel-section grid-section">
+                <div class="panel-header">
+                    <h2><i data-lucide="layout-grid"></i> Visual Scan Matrix</h2>
+                    <div class="legend">
+                        <span class="legend-item"><span class="dot dot-scanning"></span> Scanning</span>
+                        <span class="legend-item"><span class="dot dot-open"></span> Open</span>
+                        <span class="legend-item"><span class="dot dot-closed"></span> Closed</span>
+                        <span class="legend-item"><span class="dot dot-filtered"></span> Filtered</span>
+                    </div>
+                </div>
+                <div class="panel-body">
+                    <div id="scan-grid" class="scan-grid">
+                        <div class="grid-placeholder">
+                            <i data-lucide="activity" class="placeholder-icon pulse"></i>
+                            <p>Matrix display activates when scan starts.</p>
+                            <span>Shows live feed of inspected ports.</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Results Section -->
+            <section class="panel-section results-section">
+                <div class="panel-header">
+                    <div class="header-left">
+                        <h2><i data-lucide="list"></i> Scan Results</h2>
+                        <span class="results-count" id="results-count">0 targets found</span>
+                    </div>
+                    <div class="header-right">
+                        <div class="search-box">
+                            <i data-lucide="search" class="search-icon"></i>
+                            <input type="text" id="results-search" placeholder="Search by port, host, or service...">
+                        </div>
+                        <button type="button" class="btn btn-secondary" id="export-json-btn" disabled>
+                            <i data-lucide="download"></i> JSON
+                        </button>
+                        <button type="button" class="btn btn-secondary" id="export-csv-btn" disabled>
+                            <i data-lucide="download-cloud"></i> CSV
+                        </button>
+                    </div>
+                </div>
+                <div class="panel-body table-responsive">
+                    <table class="results-table" id="results-table">
+                        <thead>
+                            <tr>
+                                <th>Host / IP Address</th>
+                                <th>Port</th>
+                                <th>Status</th>
+                                <th>Identified Service</th>
+                                <th>Response Banner</th>
+                                <th>Time Detected</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="results-tbody">
+                            <tr class="table-empty">
+                                <td colspan="7">
+                                    <div class="empty-state">
+                                        <i data-lucide="inbox"></i>
+                                        <p>No open ports discovered yet</p>
+                                        <span>Start scanning to populate targets list.</span>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </main>
+    </div>
+    <script src="/app.js"></script>
+</body>
+</html>
