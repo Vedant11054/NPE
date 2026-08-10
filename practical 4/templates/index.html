@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="refresh" content="5">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Reverse Scan Security Dashboard</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 0; background: #f4f6f8; color: #17202a; }
+    header { background: #18222d; color: white; padding: 22px 32px; }
+    main { max-width: 1100px; margin: 25px auto; padding: 0 18px; }
+    .card { background: white; border-radius: 10px; padding: 20px; margin-bottom: 18px; box-shadow: 0 2px 10px #0001; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 12px; border-bottom: 1px solid #ddd; text-align: left; }
+    th { background: #eef1f4; }
+    .badge { padding: 5px 8px; border-radius: 5px; background: #e8eef5; }
+    code { background: #eef1f4; padding: 2px 5px; }
+  </style>
+</head>
+<body>
+<header>
+  <h1>Automated Reverse Port Scanning</h1>
+  <div>Authorized cybersecurity laboratory dashboard</div>
+</header>
+
+<main>
+  <div class="card">
+    <h2>How it works</h2>
+    <p>
+      A connection to the honeypot is logged. The source IP is checked
+      against the authorized-target allowlist. Only authorized lab targets
+      are scanned.
+    </p>
+  </div>
+
+  <div class="card">
+    <h2>Detected Connections</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Source IP</th>
+          <th>Source Port</th>
+          <th>Detected</th>
+          <th>Scan Status</th>
+          <th>Open Ports</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for e in events %}
+        <tr>
+          <td>{{ e["id"] }}</td>
+          <td><strong>{{ e["source_ip"] }}</strong></td>
+          <td>{{ e["source_port"] }}</td>
+          <td>{{ e["detected_at"] }}</td>
+          <td><span class="badge">{{ e["scan_status"] }}</span></td>
+          <td>{{ e["open_ports"] or "—" }}</td>
+        </tr>
+      {% else %}
+        <tr><td colspan="6">No connections detected yet.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</main>
+</body>
+</html>
